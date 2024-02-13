@@ -1,5 +1,6 @@
 from fastapi import FastAPI, UploadFile
 import time
+from pydantic import BaseModel
 
 from .settings import settings
 from .__version__ import __version__
@@ -11,22 +12,38 @@ app = FastAPI(
 )
 
 
+class InfoResponse(BaseModel):
+    name: str
+    description: str
+
+
 @app.get("/")
-def info():
+def info() -> InfoResponse:
     """
     Get information about the storage API.
     """
-    return {
-        "name": "Deadwood-AI Storage API.",
-        "description": "This is the Deadwood-AI Storage API. It is used to manage files uploads for the Deadwood-AI backend. If you are not a developer, you may be searching for https://deadtrees.earth",
-    }
+    info = InfoResponse(
+        name="Deadwood-AI Storage API.",
+        description="This is the Deadwood-AI Storage API. It is used to manage files uploads for the Deadwood-AI backend. If you are not a developer, you may be searching for https://deadtrees.earth",
+    )
+
+    return info
+
+
+class FileUploadRespose(BaseModel):
+    filename: str
+    content_type: str
+    file_size: int
+    target_path: str
+    copy_time: float
+
 
 @app.post("/upload")
-async def upload_file(file: UploadFile):
+async def upload_file(file: UploadFile) -> FileUploadRespose:
     """
     Upload a file to the server.
 
-    This endpoint expects a single file to be uploaded. The file will be saved to the raw upload directory and 
+    This endpoint expects a single file to be uploaded. The file will be saved to the raw upload directory and
     the following information about the file will be returned:
 
     - filename: the name of the file
@@ -63,7 +80,7 @@ async def upload_file(file: UploadFile):
     # TODO: what do we actually want here? Overwrite? Rename? Error?
     if target_path.exists():
         raise ValueError(f"file already exists: {file.filename}")
-    
+
     # write the file to the target path
     t1 = time.time()
     with target_path.open("wb") as buffer:
@@ -71,10 +88,10 @@ async def upload_file(file: UploadFile):
     t2 = time.time()
 
     # finally return some info about the uploaded file
-    return {
-        "filename": file.filename,
-        "content_type": file.content_type,
-        "file_size": file.size,
-        "target_path": str(target_path),
-        "copy_time": t2 - t1,
-    }
+    return FileUploadRespose(
+        filename=file.filename,
+        content_type=file.content_type,
+        file_size=file.size,
+        target_path=str(target_path),
+        copy_time=t2 - t1,
+    )
