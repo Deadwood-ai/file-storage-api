@@ -1,4 +1,5 @@
 from fastapi import FastAPI, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 import time
 from pydantic import BaseModel
 
@@ -9,6 +10,15 @@ app = FastAPI(
     title="Deadwood-AI Storage API",
     description="This is the Deadwood-AI Storage API. It is used to manage files uploads for the Deadwood-AI backend.",
     version=__version__,
+)
+
+# add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
