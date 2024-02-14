@@ -42,7 +42,7 @@ def info() -> InfoResponse:
     return info
 
 
-class FileUploadRespose(BaseModel):
+class FileUploadMetadata(BaseModel):
     filename: str
     content_type: str
     file_size: int
@@ -53,7 +53,7 @@ class FileUploadRespose(BaseModel):
 
 
 @app.post("/upload")
-async def upload_file(file: UploadFile) -> FileUploadRespose:
+async def upload_file(file: UploadFile) -> FileUploadMetadata:
     """
     Upload a file to the server.
 
@@ -109,7 +109,7 @@ async def upload_file(file: UploadFile) -> FileUploadRespose:
     t2 = time.time()
 
     # finally return some info about the uploaded file
-    return FileUploadRespose(
+    metadata = FileUploadMetadata(
         filename=file.filename,
         content_type=file.content_type,
         file_size=file.size,
@@ -118,3 +118,11 @@ async def upload_file(file: UploadFile) -> FileUploadRespose:
         uuid=uid,
         sha256=sha256,
     )
+
+    # save the metadata to a json file of same name
+    metadata_path = settings.raw_upload_path / f"{uid}_{file.filename}.json"
+    with metadata_path.open("w") as f:
+        f.write(metadata.model_dump_json(indent=4))
+
+    # return the metadata
+    return metadata
