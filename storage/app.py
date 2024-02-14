@@ -1,9 +1,11 @@
-from fastapi import FastAPI, UploadFile
+from fastapi import FastAPI, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
 import time
 import uuid
 import hashlib
-from pydantic import BaseModel
+from pydantic import BaseModel  
+from typing import Annotated
+from enum import Enum
 
 from .settings import settings
 from .__version__ import __version__
@@ -42,6 +44,12 @@ def info() -> InfoResponse:
     return info
 
 
+class PlatformEnum(str, Enum):
+    drone = "drone"
+    airborne = "airborne"
+    sattelite = "sattelite"
+
+
 class FileUploadMetadata(BaseModel):
     filename: str
     content_type: str
@@ -50,10 +58,11 @@ class FileUploadMetadata(BaseModel):
     copy_time: float
     uuid: str
     sha256: str
+    platform: PlatformEnum
 
 
 @app.post("/upload")
-async def upload_file(file: UploadFile) -> FileUploadMetadata:
+async def upload_file(file: UploadFile, platform: Annotated[PlatformEnum, Form()]) -> FileUploadMetadata:
     """
     Upload a file to the server.
 
@@ -117,6 +126,7 @@ async def upload_file(file: UploadFile) -> FileUploadMetadata:
         copy_time=t2 - t1,
         uuid=uid,
         sha256=sha256,
+        platform=platform
     )
 
     # save the metadata to a json file of same name
