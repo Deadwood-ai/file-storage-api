@@ -1,8 +1,10 @@
 from fastapi import FastAPI, UploadFile, Form
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 import time
 import uuid
 import hashlib
+from pathlib import Path
 from pydantic import BaseModel  
 from typing import Annotated
 from enum import Enum
@@ -136,3 +138,20 @@ async def upload_file(file: UploadFile, platform: Annotated[PlatformEnum, Form()
 
     # return the metadata
     return metadata
+
+
+@app.get("/upload_code.py", responses={200: {"content": {"text/x-python": {}}}}, response_class=FileResponse)
+def get_code():
+    """
+    Get the code for the upload client. You can request a working Python script, that can be 
+    used to upload files to the server. The script uses the `httpx` library to send the file
+    and the `tqdm` library to display a progress bar.
+    You need to make sure that you have the `httpx` and `tqdm` libraries installed to use the script.
+
+    ```bash
+    pip install httpx tqdm
+    ```
+
+    """  
+    # create a FastAPI response with content type of Python files
+    return FileResponse(Path(__file__).parent / "upload_client_example.py", media_type="text/x-python")
