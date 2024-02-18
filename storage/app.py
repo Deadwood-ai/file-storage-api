@@ -1,7 +1,11 @@
-from fastapi import FastAPI, UploadFile
+from fastapi import FastAPI, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
 import time
-from pydantic import BaseModel
+import uuid
+import hashlib
+from pydantic import BaseModel  
+from typing import Annotated
+from enum import Enum
 
 from .settings import settings
 from .__version__ import __version__
@@ -40,16 +44,25 @@ def info() -> InfoResponse:
     return info
 
 
-class FileUploadRespose(BaseModel):
+class PlatformEnum(str, Enum):
+    drone = "drone"
+    airborne = "airborne"
+    sattelite = "sattelite"
+
+
+class FileUploadMetadata(BaseModel):
     filename: str
     content_type: str
     file_size: int
     target_path: str
     copy_time: float
+    uuid: str
+    sha256: str
+    platform: PlatformEnum
 
 
 @app.post("/upload")
-async def upload_file(file: UploadFile) -> FileUploadRespose:
+async def upload_file(file: UploadFile, platform: Annotated[PlatformEnum, Form()]) -> FileUploadMetadata:
     """
     Upload a file to the server.
 
@@ -61,6 +74,8 @@ async def upload_file(file: UploadFile) -> FileUploadRespose:
     - file_size: the size of the file in bytes
     - target_path: the path where the file was saved
     - copy_time: the time it took to save the file in seconds
+    - uuid: the UUID of the file
+    - sha256: the SHA256 hash of the file
 
     To send the file use the `multipart/form-data` content type. The file should be sent as the value of a field
     named `file`. For example, using HTML forms like this:
@@ -83,25 +98,41 @@ async def upload_file(file: UploadFile) -> FileUploadRespose:
     ```
 
     """
-    # save the file to the raw upload directory
-    target_path = settings.raw_upload_path / file.filename
+    # create a UUID for this file
+    uid = str(uuid.uuid4())
+    # save the file to the raw upload directory - add a UUID to the filename
+    target_path = settings.raw_upload_path / f"{uid}_{file.filename}"
 
     # check if the file already exists
-    # TODO: what do we actually want here? Overwrite? Rename? Error?
     if target_path.exists():
         raise ValueError(f"file already exists: {file.filename}")
 
-    # write the file to the target path
+    # # write the file to the target path
     t1 = time.time()
     with target_path.open("wb") as buffer:
         buffer.write(await file.read())
+
+    # calculate the SHA256 hash of the file
+    with target_path.open("rb") as f:
+        sha256 = hashlib.sha256(f.read()).hexdigest()
     t2 = time.time()
 
     # finally return some info about the uploaded file
-    return FileUploadRespose(
+    metadata = FileUploadMetadata(
         filename=file.filename,
         content_type=file.content_type,
         file_size=file.size,
         target_path=str(target_path),
         copy_time=t2 - t1,
+        uuid=uid,
+        sha256=sha256,
+        platform=platform
     )
+
+    # save the metadata to a json file of same name
+    metadata_path = settings.raw_upload_path / f"{uid}_{file.filename}.json"
+    with metadata_path.open("w") as f:
+        f.write(metadata.model_dump_json(indent=4))
+
+    # return the metadata
+    return metadata
