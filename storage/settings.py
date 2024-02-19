@@ -17,6 +17,12 @@ class Settings(BaseSettings):
     # location for raw file uploads
     raw_upload_dir: str = "raw_uploads"
 
+    # some basic settings for the UVICORN server
+    uvicorn_host: str = "127.0.0.1"
+    uvicorn_port: int = 8000
+    uvicorn_root_path: str = "/"
+    uvicorn_proxy_headers: bool = True
+
     @property
     def base_path(self) -> Path:
         path = Path(self.base_dir)

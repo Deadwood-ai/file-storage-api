@@ -10,10 +10,11 @@ RUN pip install --upgrade pip && \
 # create a folder for the application
 RUN mkdir /app
 COPY ./storage /app/storage
+COPY ./run.py /app/run.py
 
 # set the working directory
 WORKDIR /app
 
 # run the application
-EXPOSE 8000
-CMD ["uvicorn", "storage.app:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers"]
+#CMD ["uvicorn", "storage.app:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers"]
+CMD ["python", "run.py"]
