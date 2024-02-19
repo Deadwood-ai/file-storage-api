@@ -1,13 +1,13 @@
-from fastapi import FastAPI, UploadFile, Form
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, UploadFile, Form, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 import time
 import uuid
 import hashlib
 from pathlib import Path
-from pydantic import BaseModel  
+from pydantic import BaseModel
 from typing import Annotated
 from enum import Enum
+import platform
 
 from .settings import settings
 from .__version__ import __version__
@@ -31,16 +31,43 @@ app.add_middleware(
 class InfoResponse(BaseModel):
     name: str
     description: str
+    system: dict
+    endpoints: list[dict]
 
 
-@app.get("/")
-def info() -> InfoResponse:
+@app.get("/", response_model=InfoResponse)
+def info(request: Request):
     """
     Get information about the storage API.
     """
-    info = InfoResponse(
+    # get the host and root path from the request
+    scheme = request.scope.get("scheme")
+    host = request.headers.get("host")
+    root_path = request.scope.get("root_path")
+    url = f"{scheme}://{host}{root_path}"
+
+    # create the info about the API server
+    info = dict(
         name="Deadwood-AI Storage API.",
         description="This is the Deadwood-AI Storage API. It is used to manage files uploads for the Deadwood-AI backend. If you are not a developer, you may be searching for https://deadtrees.earth",
+        system=dict(
+            python_version=platform.python_version(),
+            platform=platform.platform(),
+            host=host,
+            root_path=root_path,
+            scopes=list(request.scope.keys()),
+            server=request.scope.get("scheme"),
+        ),
+        endpoints=[
+            dict(url=f"{url}", description="Get information about the storage API."),
+            dict(url=f"{url}upload", description="Upload a file to the server."),
+            dict(
+                url=f"{url}upload_code.py",
+                description="Get the code for the upload client.",
+            ),
+            dict(url=f"{url}docs", description="OpenAPI documentation - Swagger UI."),
+            dict(url=f"{url}redoc", description="OpenAPI documentation - ReDoc."),
+        ],
     )
 
     return info
@@ -63,8 +90,10 @@ class FileUploadMetadata(BaseModel):
     platform: PlatformEnum
 
 
-@app.post("/upload")
-async def upload_file(file: UploadFile, platform: Annotated[PlatformEnum, Form()]) -> FileUploadMetadata:
+@app.post("/upload", status_code=201, response_model=FileUploadMetadata)
+async def upload_file(
+    file: UploadFile, platform: Annotated[PlatformEnum, Form()]
+) -> FileUploadMetadata:
     """
     Upload a file to the server.
 
@@ -128,7 +157,7 @@ async def upload_file(file: UploadFile, platform: Annotated[PlatformEnum, Form()
         copy_time=t2 - t1,
         uuid=uid,
         sha256=sha256,
-        platform=platform
+        platform=platform,
     )
 
     # save the metadata to a json file of same name
@@ -140,10 +169,14 @@ async def upload_file(file: UploadFile, platform: Annotated[PlatformEnum, Form()
     return metadata
 
 
-@app.get("/upload_code.py", responses={200: {"content": {"text/x-python": {}}}}, response_class=FileResponse)
-def get_code():
+@app.get(
+    "/upload_code.py",
+    responses={200: {"content": {"text/x-python": {}}}},
+    response_class=Response,
+)
+def get_code(request: Request):
     """
-    Get the code for the upload client. You can request a working Python script, that can be 
+    Get the code for the upload client. You can request a working Python script, that can be
     used to upload files to the server. The script uses the `httpx` library to send the file
     and the `tqdm` library to display a progress bar.
     You need to make sure that you have the `httpx` and `tqdm` libraries installed to use the script.
@@ -152,6 +185,22 @@ def get_code():
     pip install httpx tqdm
     ```
 
-    """  
+    """
+    # get the url of the server
+    scheme = request.scope.get("scheme")
+    host = request.headers.get("host")
+    root_path = request.scope.get("root_path")
+    url = f"{scheme}://{host}{root_path}"
+
+    # try to read it first
+    with open(Path(__file__).parent / "upload_client_example.py", "r") as f:
+        code = f.read()
+
+    # replace the localhost url with the actual server url
+    code = code.replace("http://localhost:8000/upload", f"{url}upload")
+
+    # create headers for attachement disposition and filename
+    headers = {"Content-Disposition": "attachment; filename=upload_client.py"}
+
     # create a FastAPI response with content type of Python files
-    return FileResponse(Path(__file__).parent / "upload_client_example.py", media_type="text/x-python")
+    return Response(content=code, media_type="text/x-python", headers=headers)
