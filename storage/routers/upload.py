@@ -23,7 +23,7 @@ class PlatformEnum(str, Enum):
 class FileUploadMetadata(BaseModel):
     aquisition_date: datetime
     upload_date: datetime
-    filename: str
+    file_name: str
     content_type: str
     file_size: int
     target_path: str
@@ -35,7 +35,7 @@ class FileUploadMetadata(BaseModel):
     @computed_field
     @property
     def file_id(self) -> str:
-        return f"{self.uuid}_{self.filename}"
+        return f"{self.uuid}_{self.file_name}"
 
 
 @router.post("/upload", status_code=201, response_model=FileUploadMetadata)
@@ -102,7 +102,7 @@ async def upload_file(
 
     # finally return some info about the uploaded file
     metadata = FileUploadMetadata(
-        filename=file.filename,
+        file_name=file.filename,
         content_type=file.content_type,
         file_size=file.size,
         target_path=str(target_path),
