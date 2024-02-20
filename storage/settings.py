@@ -1,3 +1,4 @@
+from typing import Optional
 from pydantic_settings import BaseSettings
 from dotenv import load_dotenv
 from pathlib import Path
@@ -16,6 +17,10 @@ class Settings(BaseSettings):
 
     # location for raw file uploads
     raw_upload_dir: str = "raw_uploads"
+
+    # supabase settings for supabase authentication
+    supabase_url: Optional[str] = None
+    supabase_key: Optional[str] = None
 
     # some basic settings for the UVICORN server
     uvicorn_host: str = "127.0.0.1"

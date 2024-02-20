@@ -4,3 +4,4 @@ pydantic-settings
 python-dotenv
 python-multipart
 fire
+supabase
