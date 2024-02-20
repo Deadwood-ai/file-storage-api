@@ -1,0 +1,111 @@
+
+
+from enum import Enum
+
+from pydantic import BaseModel
+from fastapi import APIRouter, UploadFile, Form
+from typing import Annotated
+import uuid
+import hashlib
+import time
+
+from ..settings import settings
+
+# build a router for the upload endpoint
+router = APIRouter()
+
+
+class PlatformEnum(str, Enum):
+    drone = "drone"
+    airborne = "airborne"
+    sattelite = "sattelite"
+
+
+class FileUploadMetadata(BaseModel):
+    filename: str
+    content_type: str
+    file_size: int
+    target_path: str
+    copy_time: float
+    uuid: str
+    sha256: str
+    platform: PlatformEnum
+
+
+@router.post("/upload", status_code=201, response_model=FileUploadMetadata)
+async def upload_file(
+    file: UploadFile, platform: Annotated[PlatformEnum, Form()]
+) -> FileUploadMetadata:
+    """
+    Upload a file to the server.
+
+    This endpoint expects a single file to be uploaded. The file will be saved to the raw upload directory and
+    the following information about the file will be returned:
+
+    - filename: the name of the file
+    - content_type: the MIME type of the file
+    - file_size: the size of the file in bytes
+    - target_path: the path where the file was saved
+    - copy_time: the time it took to save the file in seconds
+    - uuid: the UUID of the file
+    - sha256: the SHA256 hash of the file
+
+    To send the file use the `multipart/form-data` content type. The file should be sent as the value of a field
+    named `file`. For example, using HTML forms like this:
+
+    ```html
+    <form action="/upload" method="post" enctype="multipart/form-data">
+        <input type="file" name="file">
+        <input type="submit">
+    </form>
+    ```
+
+    Or using the `requests` library in Python like this:
+
+    ```python
+    import requests
+    url = "http://localhost:8000/upload"
+    files = {"file": open("example.txt", "rb")}
+    response = requests.post(url, files=files)
+    print(response.json())
+    ```
+
+    """
+    # create a UUID for this file
+    uid = str(uuid.uuid4())
+    # save the file to the raw upload directory - add a UUID to the filename
+    target_path = settings.raw_upload_path / f"{uid}_{file.filename}"
+
+    # check if the file already exists
+    if target_path.exists():
+        raise ValueError(f"file already exists: {file.filename}")
+
+    # # write the file to the target path
+    t1 = time.time()
+    with target_path.open("wb") as buffer:
+        buffer.write(await file.read())
+
+    # calculate the SHA256 hash of the file
+    with target_path.open("rb") as f:
+        sha256 = hashlib.sha256(f.read()).hexdigest()
+    t2 = time.time()
+
+    # finally return some info about the uploaded file
+    metadata = FileUploadMetadata(
+        filename=file.filename,
+        content_type=file.content_type,
+        file_size=file.size,
+        target_path=str(target_path),
+        copy_time=t2 - t1,
+        uuid=uid,
+        sha256=sha256,
+        platform=platform,
+    )
+
+    # save the metadata to a json file of same name
+    metadata_path = settings.raw_upload_path / f"{uid}_{file.filename}.json"
+    with metadata_path.open("w") as f:
+        f.write(metadata.model_dump_json(indent=4))
+
+    # return the metadata
+    return metadata
