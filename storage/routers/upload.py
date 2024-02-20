@@ -1,13 +1,12 @@
-
-
-from enum import Enum
-
-from pydantic import BaseModel
-from fastapi import APIRouter, UploadFile, Form
 from typing import Annotated
+from enum import Enum
 import uuid
 import hashlib
 import time
+from datetime import datetime
+
+from pydantic import BaseModel, computed_field
+from fastapi import APIRouter, UploadFile, Form
 
 from ..settings import settings
 
@@ -22,6 +21,8 @@ class PlatformEnum(str, Enum):
 
 
 class FileUploadMetadata(BaseModel):
+    aquisition_date: datetime
+    upload_date: datetime
     filename: str
     content_type: str
     file_size: int
@@ -31,10 +32,17 @@ class FileUploadMetadata(BaseModel):
     sha256: str
     platform: PlatformEnum
 
+    @computed_field
+    @property
+    def file_id(self) -> str:
+        return f"{self.uuid}_{self.filename}"
+
 
 @router.post("/upload", status_code=201, response_model=FileUploadMetadata)
 async def upload_file(
-    file: UploadFile, platform: Annotated[PlatformEnum, Form()]
+    file: UploadFile, 
+    platform: Annotated[PlatformEnum, Form()],
+    aquisition_date: Annotated[datetime, Form()]
 ) -> FileUploadMetadata:
     """
     Upload a file to the server.
@@ -49,6 +57,8 @@ async def upload_file(
     - copy_time: the time it took to save the file in seconds
     - uuid: the UUID of the file
     - sha256: the SHA256 hash of the file
+    - platform: the platform from which the file was uploaded
+
 
     To send the file use the `multipart/form-data` content type. The file should be sent as the value of a field
     named `file`. For example, using HTML forms like this:
@@ -100,6 +110,8 @@ async def upload_file(
         uuid=uid,
         sha256=sha256,
         platform=platform,
+        upload_date=datetime.utcnow(),
+        aquisition_date=aquisition_date
     )
 
     # save the metadata to a json file of same name
