@@ -1,13 +1,12 @@
-
-
-from enum import Enum
-
-from pydantic import BaseModel
-from fastapi import APIRouter, UploadFile, Form
 from typing import Annotated
+from enum import Enum
 import uuid
 import hashlib
 import time
+from datetime import datetime
+
+from pydantic import BaseModel, computed_field
+from fastapi import APIRouter, UploadFile, Form
 
 from ..settings import settings
 
@@ -21,8 +20,24 @@ class PlatformEnum(str, Enum):
     sattelite = "sattelite"
 
 
+class LicenseEnum(str, Enum):
+    cc_by = "cc-by"
+    cc_by_sa = "cc-by-sa"
+
+
+class StatusEnum(str, Enum):
+    pending = "pending"
+    processing = "processing"
+    errored = "errored"
+    processed = "processed"
+    audited = "audited"
+    audit_failed = "audit_failed"
+
+
 class FileUploadMetadata(BaseModel):
-    filename: str
+    aquisition_date: datetime
+    upload_date: datetime
+    file_name: str
     content_type: str
     file_size: int
     target_path: str
@@ -30,11 +45,21 @@ class FileUploadMetadata(BaseModel):
     uuid: str
     sha256: str
     platform: PlatformEnum
+    license: LicenseEnum
+    status: StatusEnum = StatusEnum.pending
+
+    @computed_field
+    @property
+    def file_id(self) -> str:
+        return f"{self.uuid}_{self.file_name}"
 
 
 @router.post("/upload", status_code=201, response_model=FileUploadMetadata)
 async def upload_file(
-    file: UploadFile, platform: Annotated[PlatformEnum, Form()]
+    file: UploadFile, 
+    platform: Annotated[PlatformEnum, Form()],
+    license: Annotated[LicenseEnum, Form()],
+    aquisition_date: Annotated[datetime, Form()]
 ) -> FileUploadMetadata:
     """
     Upload a file to the server.
@@ -49,6 +74,8 @@ async def upload_file(
     - copy_time: the time it took to save the file in seconds
     - uuid: the UUID of the file
     - sha256: the SHA256 hash of the file
+    - platform: the platform from which the file was uploaded
+
 
     To send the file use the `multipart/form-data` content type. The file should be sent as the value of a field
     named `file`. For example, using HTML forms like this:
@@ -92,7 +119,7 @@ async def upload_file(
 
     # finally return some info about the uploaded file
     metadata = FileUploadMetadata(
-        filename=file.filename,
+        file_name=file.filename,
         content_type=file.content_type,
         file_size=file.size,
         target_path=str(target_path),
@@ -100,6 +127,10 @@ async def upload_file(
         uuid=uid,
         sha256=sha256,
         platform=platform,
+        license=license,
+        upload_date=datetime.utcnow(),
+        aquisition_date=aquisition_date,
+        status=StatusEnum.pending
     )
 
     # save the metadata to a json file of same name
