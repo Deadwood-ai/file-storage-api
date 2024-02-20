@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 
 from .__version__ import __version__
-from .routers import upload, info
+from .routers import upload, info, auth
 
 app = FastAPI(
     title="Deadwood-AI Storage API",
@@ -26,6 +26,8 @@ app.include_router(info.router)
 # add the upload route to the app
 app.include_router(upload.router)
 
+# add the auth rout to the app
+app.include_router(auth.router)
 
 # TODO: not yet sure where to put this route
 @app.get(
@@ -56,7 +58,7 @@ def get_code(request: Request):
         code = f.read()
 
     # replace the localhost url with the actual server url
-    code = code.replace("http://localhost:8000/upload", f"{url}upload")
+    code = code.replace("http://127.0.0.1:8000/", url)
 
     # create headers for attachement disposition and filename
     headers = {"Content-Disposition": "attachment; filename=upload_client.py"}

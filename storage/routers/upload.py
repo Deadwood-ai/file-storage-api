@@ -6,9 +6,11 @@ import time
 from datetime import datetime
 
 from pydantic import BaseModel, computed_field
-from fastapi import APIRouter, UploadFile, Form
+from fastapi import APIRouter, UploadFile, Form, Depends
+from fastapi.security.oauth2 import OAuth2PasswordBearer
 
 from ..settings import settings
+from ..supabase_auth import verify_token
 
 # build a router for the upload endpoint
 router = APIRouter()
@@ -35,6 +37,7 @@ class StatusEnum(str, Enum):
 
 
 class FileUploadMetadata(BaseModel):
+    user_id: str
     aquisition_date: datetime
     upload_date: datetime
     file_name: str
@@ -54,12 +57,16 @@ class FileUploadMetadata(BaseModel):
         return f"{self.uuid}_{self.file_name}"
 
 
+# create the OAuth2 password scheme
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
 @router.post("/upload", status_code=201, response_model=FileUploadMetadata)
 async def upload_file(
     file: UploadFile, 
     platform: Annotated[PlatformEnum, Form()],
     license: Annotated[LicenseEnum, Form()],
-    aquisition_date: Annotated[datetime, Form()]
+    aquisition_date: Annotated[datetime, Form()],
+    token: Annotated[str, Depends(oauth2_scheme)]
 ) -> FileUploadMetadata:
     """
     Upload a file to the server.
@@ -98,6 +105,9 @@ async def upload_file(
     ```
 
     """
+    # first thing we do is verify the token
+    user_id = verify_token(token)
+
     # create a UUID for this file
     uid = str(uuid.uuid4())
     # save the file to the raw upload directory - add a UUID to the filename
@@ -119,6 +129,7 @@ async def upload_file(
 
     # finally return some info about the uploaded file
     metadata = FileUploadMetadata(
+        user_id=user_id,
         file_name=file.filename,
         content_type=file.content_type,
         file_size=file.size,
