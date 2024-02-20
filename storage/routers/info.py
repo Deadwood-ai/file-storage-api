@@ -22,7 +22,7 @@ def info(request: Request):
     scheme = request.scope.get("scheme")
     host = request.headers.get("host")
     root_path = request.scope.get("root_path")
-    url = f"{scheme}://{host}{root_path}"
+    url = f"{scheme}://{host}{root_path}".strip('/')
 
     # create the info about the API server
     info = dict(
@@ -37,14 +37,14 @@ def info(request: Request):
             server=request.scope.get("scheme"),
         ),
         endpoints=[
-            dict(url=f"{url}", description="Get information about the storage API."),
-            dict(url=f"{url}upload", description="Upload a file to the server."),
+            dict(url=f"{url}/", description="Get information about the storage API."),
+            dict(url=f"{url}/upload", description="Upload a file to the server."),
             dict(
-                url=f"{url}upload_code.py",
+                url=f"{url}/upload_code.py",
                 description="Get the code for the upload client.",
             ),
-            dict(url=f"{url}docs", description="OpenAPI documentation - Swagger UI."),
-            dict(url=f"{url}redoc", description="OpenAPI documentation - ReDoc."),
+            dict(url=f"{url}/docs", description="OpenAPI documentation - Swagger UI."),
+            dict(url=f"{url}/redoc", description="OpenAPI documentation - ReDoc."),
         ],
     )
 
