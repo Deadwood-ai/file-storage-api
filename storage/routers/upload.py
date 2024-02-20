@@ -25,6 +25,15 @@ class LicenseEnum(str, Enum):
     cc_by_sa = "cc-by-sa"
 
 
+class StatusEnum(str, Enum):
+    pending = "pending"
+    processing = "processing"
+    errored = "errored"
+    processed = "processed"
+    audited = "audited"
+    audit_failed = "audit_failed"
+
+
 class FileUploadMetadata(BaseModel):
     aquisition_date: datetime
     upload_date: datetime
@@ -37,6 +46,7 @@ class FileUploadMetadata(BaseModel):
     sha256: str
     platform: PlatformEnum
     license: LicenseEnum
+    status: StatusEnum = StatusEnum.pending
 
     @computed_field
     @property
@@ -119,7 +129,8 @@ async def upload_file(
         platform=platform,
         license=license,
         upload_date=datetime.utcnow(),
-        aquisition_date=aquisition_date
+        aquisition_date=aquisition_date,
+        status=StatusEnum.pending
     )
 
     # save the metadata to a json file of same name
