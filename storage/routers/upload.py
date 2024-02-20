@@ -20,6 +20,11 @@ class PlatformEnum(str, Enum):
     sattelite = "sattelite"
 
 
+class LicenseEnum(str, Enum):
+    cc_by = "cc-by"
+    cc_by_sa = "cc-by-sa"
+
+
 class FileUploadMetadata(BaseModel):
     aquisition_date: datetime
     upload_date: datetime
@@ -31,6 +36,7 @@ class FileUploadMetadata(BaseModel):
     uuid: str
     sha256: str
     platform: PlatformEnum
+    license: LicenseEnum
 
     @computed_field
     @property
@@ -42,6 +48,7 @@ class FileUploadMetadata(BaseModel):
 async def upload_file(
     file: UploadFile, 
     platform: Annotated[PlatformEnum, Form()],
+    license: Annotated[LicenseEnum, Form()],
     aquisition_date: Annotated[datetime, Form()]
 ) -> FileUploadMetadata:
     """
@@ -110,6 +117,7 @@ async def upload_file(
         uuid=uid,
         sha256=sha256,
         platform=platform,
+        license=license,
         upload_date=datetime.utcnow(),
         aquisition_date=aquisition_date
     )
