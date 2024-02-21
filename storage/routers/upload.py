@@ -6,11 +6,11 @@ import time
 from datetime import datetime
 
 from pydantic import BaseModel, computed_field
-from fastapi import APIRouter, UploadFile, Form, Depends
+from fastapi import APIRouter, UploadFile, Form, Depends, HTTPException
 from fastapi.security.oauth2 import OAuth2PasswordBearer
 
 from ..settings import settings
-from ..supabase_auth import verify_token
+from ..supabase_client import verify_token
 
 # build a router for the upload endpoint
 router = APIRouter()
@@ -107,6 +107,8 @@ async def upload_file(
     """
     # first thing we do is verify the token
     user_id = verify_token(token)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token")
 
     # create a UUID for this file
     uid = str(uuid.uuid4())
