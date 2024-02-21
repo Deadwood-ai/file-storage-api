@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 from fastapi.security.oauth2 import OAuth2PasswordRequestForm
 
-from ..supabase_auth import login as supabase_login
+from ..supabase_client import login as supabase_login
 
 router = APIRouter()
 
