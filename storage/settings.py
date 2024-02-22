@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     uvicorn_root_path: str = "/"
     uvicorn_proxy_headers: bool = True
 
+    # supabase settings
+    metadata_table: str = 'upload_files'
+
     @property
     def base_path(self) -> Path:
         path = Path(self.base_dir)
