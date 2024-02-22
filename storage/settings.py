@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     uvicorn_proxy_headers: bool = True
 
     # supabase settings
-    metadata_table: str = 'upload_files'
+    metadata_table: str = 'metadata'
 
     @property
     def base_path(self) -> Path:
