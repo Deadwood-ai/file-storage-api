@@ -5,12 +5,12 @@ import hashlib
 import time
 from datetime import datetime
 
-from pydantic import BaseModel, computed_field
+from pydantic import BaseModel, computed_field, field_serializer
 from fastapi import APIRouter, UploadFile, Form, Depends, HTTPException
 from fastapi.security.oauth2 import OAuth2PasswordBearer
 
 from ..settings import settings
-from ..supabase_client import verify_token
+from ..supabase_client import verify_token, use_client
 
 # build a router for the upload endpoint
 router = APIRouter()
@@ -55,6 +55,10 @@ class FileUploadMetadata(BaseModel):
     @property
     def file_id(self) -> str:
         return f"{self.uuid}_{self.file_name}"
+    
+    @field_serializer('aquisition_date', 'upload_date', mode='plain')
+    def datetime_to_isoformat(field: datetime) -> str:
+        return field.isoformat()
 
 
 # create the OAuth2 password scheme
@@ -107,6 +111,7 @@ async def upload_file(
     """
     # first thing we do is verify the token
     user_id = verify_token(token)
+
     if not user_id:
         raise HTTPException(status_code=401, detail="Invalid token")
 
@@ -146,10 +151,18 @@ async def upload_file(
         status=StatusEnum.pending
     )
 
+    # upload the metadata to supabase
+    with use_client(token) as client:
+        try:
+            client.table(settings.metadata_table).insert(metadata.model_dump()).execute()
+        except Exception as e:
+            print(str(e))
+            raise HTTPException(status_code=500, detail=str(e))
+    
     # save the metadata to a json file of same name
-    metadata_path = settings.raw_upload_path / f"{uid}_{file.filename}.json"
-    with metadata_path.open("w") as f:
-        f.write(metadata.model_dump_json(indent=4))
+    # metadata_path = settings.raw_upload_path / f"{uid}_{file.filename}.json"
+    # with metadata_path.open("w") as f:
+    #     f.write(metadata.model_dump_json(indent=4))
 
     # return the metadata
     return metadata
