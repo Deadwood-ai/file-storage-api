@@ -9,7 +9,7 @@ from pydantic import BaseModel, computed_field, field_serializer
 from fastapi import APIRouter, UploadFile, Form, Depends, HTTPException
 from fastapi.security.oauth2 import OAuth2PasswordBearer
 
-from ..settings import settings
+from ..utils.settings import settings
 from ..supabase_client import verify_token, use_client
 
 # build a router for the upload endpoint
