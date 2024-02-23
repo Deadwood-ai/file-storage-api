@@ -1,6 +1,6 @@
 import uvicorn
 
-from storage.settings import settings
+from storage.utils.settings import settings
 
 
 def run(
