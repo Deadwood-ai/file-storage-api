@@ -1,64 +1,20 @@
 from typing import Annotated
-from enum import Enum
 import uuid
 import hashlib
 import time
 from datetime import datetime
 
-from pydantic import BaseModel, computed_field, field_serializer
 from fastapi import APIRouter, UploadFile, Form, Depends, HTTPException
 from fastapi.security.oauth2 import OAuth2PasswordBearer
 
 from ..utils.settings import settings
+from ..utils.metadata_models import PlatformEnum, LicenseEnum, StatusEnum, FileUploadMetadata
 from ..supabase_client import verify_token, use_client
 
 # build a router for the upload endpoint
 router = APIRouter()
 
 
-class PlatformEnum(str, Enum):
-    drone = "drone"
-    airborne = "airborne"
-    sattelite = "sattelite"
-
-
-class LicenseEnum(str, Enum):
-    cc_by = "cc-by"
-    cc_by_sa = "cc-by-sa"
-
-
-class StatusEnum(str, Enum):
-    pending = "pending"
-    processing = "processing"
-    errored = "errored"
-    processed = "processed"
-    audited = "audited"
-    audit_failed = "audit_failed"
-
-
-class FileUploadMetadata(BaseModel):
-    user_id: str
-    aquisition_date: datetime
-    upload_date: datetime
-    file_name: str
-    content_type: str
-    file_size: int
-    target_path: str
-    copy_time: float
-    uuid: str
-    sha256: str
-    platform: PlatformEnum
-    license: LicenseEnum
-    status: StatusEnum = StatusEnum.pending
-
-    @computed_field
-    @property
-    def file_id(self) -> str:
-        return f"{self.uuid}_{self.file_name}"
-    
-    @field_serializer('aquisition_date', 'upload_date', mode='plain')
-    def datetime_to_isoformat(field: datetime) -> str:
-        return field.isoformat()
 
 
 # create the OAuth2 password scheme
