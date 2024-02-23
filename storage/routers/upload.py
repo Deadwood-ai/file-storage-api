@@ -9,16 +9,15 @@ from fastapi.security.oauth2 import OAuth2PasswordBearer
 
 from ..utils.settings import settings
 from ..utils.metadata_models import PlatformEnum, LicenseEnum, StatusEnum, FileUploadMetadata
-from ..supabase_client import verify_token, use_client
+from ..utils.supabase_client import verify_token, use_client
+
 
 # build a router for the upload endpoint
 router = APIRouter()
 
-
-
-
 # create the OAuth2 password scheme
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
 
 @router.post("/upload", status_code=201, response_model=FileUploadMetadata)
 async def upload_file(
