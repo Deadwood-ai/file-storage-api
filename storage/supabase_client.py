@@ -4,7 +4,7 @@ from supabase import create_client
 from supabase.client import Client
 from contextlib import contextmanager
 
-from utils.settings import settings
+from .utils.settings import settings
 
 
 def login(user: str, password: str):
