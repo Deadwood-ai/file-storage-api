@@ -95,7 +95,7 @@ async def upload_file(
         file_name=file.filename,
         content_type=file.content_type,
         file_size=file.size,
-        target_path=str(target_path),
+        raw_path=str(target_path),
         copy_time=t2 - t1,
         uuid=uid,
         sha256=sha256,
